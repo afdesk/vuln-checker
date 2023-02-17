@@ -1,0 +1,15 @@
+.DS_Store
+
+.idea/
+
+.venv/
+venv/
+
+vuln-list
+**/*.pkl
+dumps/
+*.db
+
+**/__pycache__/
+.pytest_cache/
+
