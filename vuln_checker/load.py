@@ -231,22 +231,12 @@ def init_loaders() -> Dict[str, AdvisoryLoader]:
     return {loader.database_name(): loader for loader in loaders}
 
 
-def load_vulnerabilities(databases_path: str, databases: list[str]) -> list[UnifiedVulnerabilityModel]:
+def load_vulnerabilities(databases_path: str) -> list[UnifiedVulnerabilityModel]:
     supported_databases = [loader.database_name() for loader in loaders]
     logging.info(f"Supported databases: {supported_databases}")
 
-    scan_all = len(databases) == 0
-
-    if not scan_all:
-        for database in databases:
-            if database not in supported_databases:
-                raise ValueError(f"'{database}' database is not supported")
-
     models = []
     for loader in loaders:
-        if not scan_all and loader.database_name() not in databases:
-            logging.info(f"Skip scan {loader.database_name()}")
-            continue
         logging.info(f"Scan {loader.database_name()}")
         for model in tqdm(loader.scan_database(databases_path)):
             models.append(model)
