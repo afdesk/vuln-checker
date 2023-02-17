@@ -6,9 +6,7 @@
 venv/
 
 vuln-list
-**/*.pkl
-dumps/
-*.db
+vulnerabilities
 
 **/__pycache__/
 .pytest_cache/
