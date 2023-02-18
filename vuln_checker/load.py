@@ -17,6 +17,8 @@ class AdvisoryLoader(ABC):
 
     def scan_database(self, database_path: str) -> Iterator[VulnerabilityModel]:
         for entry in scan_dir_recursively(os.path.join(database_path, self.database_name())):
+            if not entry.path.endswith(".json"):
+                continue
             with open(entry.path) as f:
                 data = json.load(f)
                 yield self.to_unified_model(data)
@@ -103,12 +105,28 @@ class GoLoader(OsvFormatBasedLoader):
         return "go"
 
 
+class RedhatAdvisoryLoader(AdvisoryLoader):
+    def database_name(self) -> str:
+        return "redhat"
+
+    def to_unified_model(self, model: dict) -> VulnerabilityModel:
+        cvss3 = model.get("cvss3", {})
+        return VulnerabilityModel(
+            id=model["name"],
+            description=",".join(model["details"]),
+            severity=model["threat_severity"],
+            cvss_v3_score=cvss3.get("cvss3_base_score"),
+            cvss_v3_vector=cvss3.get("cvss3_scoring_vector")
+        )
+
+
 loaders = [
     GithubAdvisoryLoader(),
     GitlabAdvisoryLoader(),
     NvdLoader(),
     OsvLoader(),
-    GoLoader()
+    GoLoader(),
+    RedhatAdvisoryLoader()
 ]
 
 
