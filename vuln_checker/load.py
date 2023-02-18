@@ -86,9 +86,10 @@ class NvdLoader(AdvisoryLoader):
 class OsvFormatBasedLoader(AdvisoryLoader, ABC):
 
     def to_unified_model(self, model: dict) -> VulnerabilityModel:
+        aliases = model.get("aliases")
         return VulnerabilityModel(
             id=model["id"],
-            aliases=model.get("aliases") or set(),
+            aliases=aliases and set(aliases) or set(),
             description=model["details"]
         )
 
