@@ -5,7 +5,7 @@ description = ""
 authors = ["Nikita Pivkin <delatornikita@gmail.com>"]
 
 [tool.poetry.scripts]
-vuln-compare = "vuln_checker.cli:main"
+vuln-checker = "vuln_checker.main:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"
