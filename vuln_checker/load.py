@@ -55,12 +55,12 @@ class GitlabAdvisoryLoader(AdvisoryLoader):
         return "glad"
 
     def to_unified_model(self, model: dict) -> VulnerabilityModel:
-        # aliases = model["Identifiers"]
         return VulnerabilityModel(
-            model["Identifier"],
-            model["Description"],
-            model["Title"],
-            cvss_v3_vector=model["CvssV3"]
+            model["identifier"],
+            model["description"],
+            model["title"],
+            cvss_v3_vector=model.get("cvss_v3"),
+            aliases=model.get("identifiers")
         )
 
 
