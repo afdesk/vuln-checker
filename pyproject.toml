@@ -10,6 +10,8 @@ vuln-checker = "vuln_checker.main:main"
 [tool.poetry.dependencies]
 python = "^3.10"
 tqdm = "^4.64.1"
+pyyaml = "^6.0"
+gitpython = "^3.1.31"
 
 [tool.poetry.dev-dependencies]
 
