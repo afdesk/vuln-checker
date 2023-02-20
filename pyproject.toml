@@ -2,7 +2,7 @@
 name = "vuln_checker"
 version = "0.1.0"
 description = ""
-authors = ["Nikita Pivkin <delatornikita@gmail.com>"]
+authors = ["Nikita Pivkin <nikita.pivkin@smartforce.io>"]
 
 [tool.poetry.scripts]
 vuln-checker = "vuln_checker.main:main"
