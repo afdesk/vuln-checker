@@ -2,21 +2,20 @@ import itertools
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Iterable, TypedDict
 
 import networkx as nx
 from networkx import Graph
 
 from vuln_checker.load import load_vulnerabilities
-from vuln_checker.util import create_dir
 
-DEFAULT_DATABASES_PATH = os.path.join(os.getcwd(), "vuln-list")
-VULNS_PATH = os.path.join(os.getcwd(), "vulnerabilities")
+DEFAULT_DATABASES_PATH = Path.cwd() / "vuln-list"
+VULNS_PATH = Path.cwd() / "vulnerabilities"
 
 
-def check_databases_folder(databases_path: str):
-    exist = os.path.exists(databases_path)
-    if not exist:
+def check_databases_folder(databases_path: Path):
+    if not databases_path.exists():
         raise NotADirectoryError
 
 
@@ -53,8 +52,8 @@ def create_map_of_vulnerabilities() -> VulnMap:
     vulns: VulnMap = {}
 
     for database_name, model in load_vulnerabilities(DEFAULT_DATABASES_PATH):
-        database_path = os.path.join(VULNS_PATH, database_name)
-        create_dir(database_path)
+        database_path = VULNS_PATH / database_name
+        database_path.mkdir(exist_ok=True)
         file_name = os.path.join(database_path, model.id + '.json')
         with open(file_name, 'w') as f:
             json.dump(model.__dict__, f, default=set_to_list)
@@ -114,7 +113,7 @@ def main():
     logging.basicConfig(level=logging.INFO)
 
     check_databases_folder(DEFAULT_DATABASES_PATH)
-    create_dir(VULNS_PATH)
+    VULNS_PATH.mkdir(exist_ok=True)
 
     vulnerabilities = create_map_of_vulnerabilities()
     combined_vulnerabilities = combine_vulnerabilities(vulnerabilities)

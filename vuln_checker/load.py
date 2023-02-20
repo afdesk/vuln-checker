@@ -1,13 +1,12 @@
-import logging
 import json
-import os
+import logging
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Iterator
 
 from tqdm import tqdm
 
 from vuln_checker.model import VulnerabilityModel
-from vuln_checker.util import scan_dir_recursively
 
 
 class AdvisoryLoader(ABC):
@@ -15,11 +14,10 @@ class AdvisoryLoader(ABC):
     def database_name(self) -> str:
         raise NotImplementedError
 
-    def scan_database(self, database_path: str) -> Iterator[VulnerabilityModel]:
-        for entry in scan_dir_recursively(os.path.join(database_path, self.database_name())):
-            if not entry.path.endswith(".json"):
-                continue
-            with open(entry.path) as f:
+    def scan_database(self, databases_path: Path) -> Iterator[VulnerabilityModel]:
+        database_path = databases_path / self.database_name()
+        for p in database_path.rglob("*.json"):
+            with open(p.absolute()) as f:
                 data = json.load(f)
                 yield self.to_unified_model(data)
 
@@ -135,11 +133,11 @@ def init_loaders() -> dict[str, AdvisoryLoader]:
     return {loader.database_name(): loader for loader in loaders}
 
 
-def load_vulnerabilities(databases_path: str) -> tuple[str, Iterator[VulnerabilityModel]]:
+def load_vulnerabilities(databases_path: Path) -> tuple[str, Iterator[VulnerabilityModel]]:
     supported_databases = [loader.database_name() for loader in loaders]
     logging.info(f"Supported databases: {supported_databases}")
 
     for loader in loaders:
-        logging.info(f"Scan {loader.database_name()}")
-        for model in tqdm(loader.scan_database(databases_path)):
+        progress_description = f"Scan {loader.database_name()}"
+        for model in tqdm(loader.scan_database(databases_path), desc=progress_description):
             yield loader.database_name(), model
