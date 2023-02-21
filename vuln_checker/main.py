@@ -1,12 +1,10 @@
 import itertools
 import json
 import logging
-import os
 from pathlib import Path
 from typing import Iterable, TypedDict
 
 import networkx as nx
-from networkx import Graph
 
 from vuln_checker.load import load_vulnerabilities
 
@@ -54,14 +52,14 @@ def create_map_of_vulnerabilities() -> VulnMap:
     for database_name, model in load_vulnerabilities(DEFAULT_DATABASES_PATH):
         database_path = VULNS_PATH / database_name
         database_path.mkdir(exist_ok=True)
-        file_name = os.path.join(database_path, model.id + '.json')
-        with open(file_name, 'w') as f:
+        vulnerability_file = database_path / (model.id + '.json')
+        with vulnerability_file.open('w') as f:
             json.dump(model.__dict__, f, default=set_to_list)
 
         vulnerability = vulns.get(model.id, {})
         aliases = vulnerability.get("aliases", set()) | model.aliases
         aliases.discard(model.id)
-        sources = vulnerability.get("sources", set()) | {file_name}
+        sources = vulnerability.get("sources", set()) | {str(vulnerability_file)}
 
         vulns[model.id] = {
             "aliases": aliases,
@@ -83,7 +81,7 @@ def init_graph_of_vulnerabilities(vulnerabilities: VulnMap):
     return graph
 
 
-def traverse_graph_and_combine_vulnerabilities(graph: Graph) -> VulnMap:
+def traverse_graph_and_combine_vulnerabilities(graph: nx.Graph) -> VulnMap:
     combined_vulnerabilities: VulnMap = {}
     visited = set()
     for node, data in graph.nodes(data=True):
