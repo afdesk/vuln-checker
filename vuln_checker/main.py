@@ -81,8 +81,8 @@ def prepare_databases():
                 directory.unlink()
             continue
         for p in tqdm((glad_path / directory).rglob("*.yml"), desc=f"Convert `{directory.name}` package"):
-            json_file_name = str(p)[:-3] + "json"
-            with open(str(p), "r") as yaml_file, open(json_file_name, "w") as json_file:
+            json_advisory = p.with_suffix(".json")
+            with p.open("r") as yaml_file, json_advisory.open("w") as json_file:
                 advisory = yaml.safe_load(yaml_file)
                 json.dump(advisory, json_file)
             p.unlink()
