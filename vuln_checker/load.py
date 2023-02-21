@@ -58,7 +58,7 @@ class GitlabAdvisoryLoader(AdvisoryLoader):
             model["description"],
             model["title"],
             cvss_v3_vector=model.get("cvss_v3"),
-            aliases=set(model.get("identifiers") or [])
+            aliases=set(model.get("identifiers", []))
         )
 
 
@@ -84,10 +84,9 @@ class NvdLoader(AdvisoryLoader):
 class OsvFormatBasedLoader(AdvisoryLoader, ABC):
 
     def to_unified_model(self, model: dict) -> VulnerabilityModel:
-        aliases = model.get("aliases")
         return VulnerabilityModel(
             id=model["id"],
-            aliases=aliases and set(aliases) or set(),
+            aliases=set(model.get("aliases", [])),
             description=model["details"]
         )
 
