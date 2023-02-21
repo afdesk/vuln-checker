@@ -10,6 +10,7 @@ vuln-checker = "vuln_checker.main:main"
 [tool.poetry.dependencies]
 python = "^3.10"
 tqdm = "^4.64.1"
+networkx = "^3.0"
 
 [tool.poetry.dev-dependencies]
 
