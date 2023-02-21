@@ -18,6 +18,15 @@ def safe_str_to_float(score: any):
         return score
 
 
+def normalize_severity(severity: str):
+    severity = severity.upper()
+    if severity == "MEDIUM":
+        return "MODERATE"
+    if severity == "IMPORTANT":
+        return "HIGH"
+    return severity
+
+
 class AdvisoryLoader(ABC):
     @abstractmethod
     def database_name(self) -> str:
@@ -50,7 +59,7 @@ class GithubAdvisoryLoader(AdvisoryLoader):
             advisory["Description"],
             advisory["Summary"],
             aliases,
-            advisory.get("Severity", "").upper(),
+            normalize_severity(advisory.get("Severity", "")),
             safe_str_to_float(advisory["CVSS"]["Score"]),
             advisory["CVSS"]["VectorString"]
         )
@@ -121,7 +130,7 @@ class RedhatAdvisoryLoader(AdvisoryLoader):
         return VulnerabilityModel(
             id=model["name"],
             description=",".join(model["details"]),
-            severity=model.get("threat_severity", "").upper(),
+            severity=normalize_severity(model.get("threat_severity", "")),
             cvss_v3_score=safe_str_to_float(cvss3.get("cvss3_base_score")),
             cvss_v3_vector=cvss3.get("cvss3_scoring_vector")
         )
