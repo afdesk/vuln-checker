@@ -58,7 +58,7 @@ class GitlabAdvisoryLoader(AdvisoryLoader):
             model["description"],
             model["title"],
             cvss_v3_vector=model.get("cvss_v3"),
-            aliases=model.get("identifiers")
+            aliases=set(model.get("identifiers") or [])
         )
 
 
