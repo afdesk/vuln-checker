@@ -9,6 +9,15 @@ from tqdm import tqdm
 from vuln_checker.model import VulnerabilityModel
 
 
+def safe_str_to_float(score: any):
+    if not isinstance(score, str):
+        return score
+    try:
+        return float(score)
+    except ValueError:
+        return score
+
+
 class AdvisoryLoader(ABC):
     @abstractmethod
     def database_name(self) -> str:
@@ -41,8 +50,8 @@ class GithubAdvisoryLoader(AdvisoryLoader):
             advisory["Description"],
             advisory["Summary"],
             aliases,
-            advisory["Severity"],
-            advisory["CVSS"]["Score"],
+            advisory.get("Severity", "").upper(),
+            safe_str_to_float(advisory["CVSS"]["Score"]),
             advisory["CVSS"]["VectorString"]
         )
 
@@ -112,8 +121,8 @@ class RedhatAdvisoryLoader(AdvisoryLoader):
         return VulnerabilityModel(
             id=model["name"],
             description=",".join(model["details"]),
-            severity=model["threat_severity"],
-            cvss_v3_score=cvss3.get("cvss3_base_score"),
+            severity=model.get("threat_severity", "").upper(),
+            cvss_v3_score=safe_str_to_float(cvss3.get("cvss3_base_score")),
             cvss_v3_vector=cvss3.get("cvss3_scoring_vector")
         )
 
