@@ -10,21 +10,20 @@ from vuln_checker.model import VulnerabilityModel
 
 
 def safe_str_to_float(score: any):
-    if not isinstance(score, str):
-        return score
     try:
         return float(score)
-    except ValueError:
-        return score
+    except (ValueError, TypeError):
+        return 0.0
 
 
 def normalize_severity(severity: str):
+    if not isinstance(severity, str):
+        return "UNKNOWN"
     severity = severity.upper()
-    if severity == "MEDIUM":
-        return "MODERATE"
-    if severity == "IMPORTANT":
-        return "HIGH"
-    return severity
+    match severity.upper():
+        case "MEDIUM": return "MODERATE"
+        case "IMPORTANT": return "HIGH"
+        case other: return other
 
 
 class AdvisoryLoader(ABC):
@@ -59,7 +58,7 @@ class GithubAdvisoryLoader(AdvisoryLoader):
             advisory["Description"],
             advisory["Summary"],
             aliases,
-            normalize_severity(advisory.get("Severity", "")),
+            normalize_severity(advisory.get("Severity")),
             safe_str_to_float(advisory["CVSS"]["Score"]),
             advisory["CVSS"]["VectorString"]
         )
@@ -130,7 +129,7 @@ class RedhatAdvisoryLoader(AdvisoryLoader):
         return VulnerabilityModel(
             id=model["name"],
             description=",".join(model["details"]),
-            severity=normalize_severity(model.get("threat_severity", "")),
+            severity=normalize_severity(model.get("threat_severity")),
             cvss_v3_score=safe_str_to_float(cvss3.get("cvss3_base_score")),
             cvss_v3_vector=cvss3.get("cvss3_scoring_vector")
         )
@@ -144,10 +143,6 @@ loaders = [
     GoLoader(),
     RedhatAdvisoryLoader()
 ]
-
-
-def init_loaders() -> dict[str, AdvisoryLoader]:
-    return {loader.database_name(): loader for loader in loaders}
 
 
 def load_vulnerabilities(databases_path: Path) -> tuple[str, Iterator[VulnerabilityModel]]:

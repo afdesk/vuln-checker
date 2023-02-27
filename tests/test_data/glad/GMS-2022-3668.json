@@ -1,0 +1,13 @@
+{
+  "id": "GMS-2022-3668",
+  "description": "Relative Path Traversal in kubevirt.io/kubevirt.",
+  "title": "Relative Path Traversal",
+  "aliases": [
+    "CVE-2022-1798",
+    "GMS-2022-3668",
+    "GHSA-cvx8-ppmc-78hm"
+  ],
+  "severity": null,
+  "cvss_v3_score": null,
+  "cvss_v3_vector": null
+}

@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import shutil
+from collections import defaultdict
 from operator import itemgetter
 from pathlib import Path
 from typing import Iterable, TypedDict, Literal
@@ -219,11 +220,11 @@ keys_for_check: tuple[Literal['severity']] = (
 
 
 def find_different_advisories(vulns: VulnMap) -> DifferentAdvisories:
-    different_advisories = {k: [] for k in keys_for_check}
+    different_advisories = defaultdict(list)
 
     for vuln in vulns.values():
         # there is nothing to compare
-        if len(vuln["aliases"]) < 1:
+        if not vuln["aliases"]:
             continue
 
         advisories: list[Advisory] = []
