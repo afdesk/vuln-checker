@@ -19,7 +19,6 @@ def safe_str_to_float(score: any):
 def normalize_severity(severity: str):
     if not isinstance(severity, str):
         return "UNKNOWN"
-    severity = severity.upper()
     match severity.upper():
         case "MEDIUM": return "MODERATE"
         case "IMPORTANT": return "HIGH"
