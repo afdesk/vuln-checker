@@ -9,6 +9,22 @@ from tqdm import tqdm
 from vuln_checker.model import VulnerabilityModel
 
 
+def safe_str_to_float(score: any):
+    try:
+        return float(score)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def normalize_severity(severity: str):
+    if not isinstance(severity, str):
+        return "UNKNOWN"
+    match severity.upper():
+        case "MEDIUM": return "MODERATE"
+        case "IMPORTANT": return "HIGH"
+        case other: return other
+
+
 class AdvisoryLoader(ABC):
     @abstractmethod
     def database_name(self) -> str:
@@ -41,8 +57,8 @@ class GithubAdvisoryLoader(AdvisoryLoader):
             advisory["Description"],
             advisory["Summary"],
             aliases,
-            advisory["Severity"],
-            advisory["CVSS"]["Score"],
+            normalize_severity(advisory.get("Severity")),
+            safe_str_to_float(advisory["CVSS"]["Score"]),
             advisory["CVSS"]["VectorString"]
         )
 
@@ -112,8 +128,8 @@ class RedhatAdvisoryLoader(AdvisoryLoader):
         return VulnerabilityModel(
             id=model["name"],
             description=",".join(model["details"]),
-            severity=model["threat_severity"],
-            cvss_v3_score=cvss3.get("cvss3_base_score"),
+            severity=normalize_severity(model.get("threat_severity")),
+            cvss_v3_score=safe_str_to_float(cvss3.get("cvss3_base_score")),
             cvss_v3_vector=cvss3.get("cvss3_scoring_vector")
         )
 
@@ -126,10 +142,6 @@ loaders = [
     GoLoader(),
     RedhatAdvisoryLoader()
 ]
-
-
-def init_loaders() -> dict[str, AdvisoryLoader]:
-    return {loader.database_name(): loader for loader in loaders}
 
 
 def load_vulnerabilities(databases_path: Path) -> tuple[str, Iterator[VulnerabilityModel]]:

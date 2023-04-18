@@ -1,12 +1,14 @@
 .DS_Store
 
 .idea/
+.vscode/
 
 .venv/
 venv/
 
 vuln-list
 vulnerabilities
+**/*.ipynb
 
 **/__pycache__/
 .pytest_cache/

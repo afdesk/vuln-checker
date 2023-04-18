@@ -3,8 +3,10 @@ import json
 import logging
 import os
 import shutil
+from collections import defaultdict
+from operator import itemgetter
 from pathlib import Path
-from typing import Iterable, TypedDict
+from typing import Iterable, TypedDict, Literal
 
 import networkx as nx
 import yaml
@@ -18,6 +20,7 @@ VULNS_PATH = Path.cwd() / "vulnerabilities"
 
 VULN_LIST_REPO = "https://github.com/aquasecurity/vuln-list.git"
 GLAD_DATABASE_REPO = "https://gitlab.com/gitlab-org/security-products/gemnasium-db.git"
+
 
 def check_databases_folder(databases_path: Path):
     if not databases_path.exists():
@@ -119,7 +122,7 @@ def create_map_of_vulnerabilities() -> VulnMap:
         database_path.mkdir(exist_ok=True)
         vulnerability_file = database_path / (model.id + '.json')
         with vulnerability_file.open('w') as f:
-            json.dump(model.__dict__, f, default=set_to_list)
+            json.dump(model.__dict__, f, default=set_to_list, indent=2)
 
         vulnerability = vulns.get(model.id, {})
         aliases = vulnerability.get("aliases", set()) | model.aliases
@@ -172,6 +175,83 @@ def combine_vulnerabilities(vulns: VulnMap) -> VulnMap:
     return traverse_graph_and_combine_vulnerabilities(graph)
 
 
+def dump_vulns(vulns: VulnMap):
+    with (VULNS_PATH / "combined.json").open("w") as f:
+        json.dump(vulns, f, default=set_to_list, indent=2)
+
+
+Advisory = TypedDict(
+    'Advisory', {
+        'source': str,
+        'id': str,
+        'severity': str | None,
+        'cvss_v3_vector': str | None,
+        'cvss_v3_score': float | None
+    }
+)
+
+GroupedAdvisories = dict[str, list[Advisory]]
+DifferentAdvisories = TypedDict(
+    'DifferentAdvisories', {'severity': list[GroupedAdvisories]}
+)
+
+KeyForCheck = Literal['severity', 'cvss_v3_vector', 'cvss_v3_score']
+
+
+def compare_advisory_by_field_name(advisories: Iterable[Advisory], field_name: KeyForCheck) -> GroupedAdvisories:
+    key = itemgetter(field_name)
+    advisories = [advisory for advisory in advisories if advisory[field_name]]
+
+    sorted_advisories = sorted(advisories, key=key)
+    grouped = itertools.groupby(sorted_advisories, key)
+    return {k: list(g) for (k, g) in grouped}
+
+
+def advisory_to_short_info(advisory: Advisory) -> str:
+    source = advisory["source"].split("/")
+    identifier = source[-1][:-5]
+    database = source[-2]
+    return f"{identifier} in {database}"
+
+
+keys_for_check: tuple[Literal['severity']] = (
+    "severity",
+)
+
+
+def find_different_advisories(vulns: VulnMap) -> DifferentAdvisories:
+    different_advisories = defaultdict(list)
+
+    for vuln in vulns.values():
+        # there is nothing to compare
+        if not vuln["aliases"]:
+            continue
+
+        advisories: list[Advisory] = []
+        for source in vuln["sources"]:
+            with open(source, "r") as f:
+                advisories += [json.load(f) | {"source": source}]
+
+        for key in keys_for_check:
+            different = compare_advisory_by_field_name(advisories, key)
+            if len(different) > 1:
+                different_advisories[key].append(different)
+
+    return different_advisories
+
+
+def report_to_file(advisories: DifferentAdvisories):
+    message = ""
+    for k, groups in advisories.items():
+        for group in groups:
+            for key, advisories in group.items():
+                message += f"{k}: {key}\n"
+                message += "\t" + "\n\t".join(advisory_to_short_info(adv) for adv in advisories) + "\n"
+            message += "-" * 20 + "\n"
+
+    (VULNS_PATH / "report.txt").write_text(message)
+
+
 def main():
     logging.basicConfig(level=logging.INFO)
 
@@ -180,6 +260,11 @@ def main():
 
     vulnerabilities = create_map_of_vulnerabilities()
     combined_vulnerabilities = combine_vulnerabilities(vulnerabilities)
+    dump_vulns(combined_vulnerabilities)
+
+    advisories = find_different_advisories(combined_vulnerabilities)
+
+    report_to_file(advisories)
 
 
 if __name__ == "__main__":

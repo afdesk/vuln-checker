@@ -1,0 +1,12 @@
+{
+  "id": "GMS-2022-4130",
+  "description": "As part of a Kubevirt audit performed by NCC group, a finding dealing with systemic lack of path sanitization which leads to a path traversal was identified. Google tested the exploitability of the paths in the audit report and identified that when combined with another vulnerability one of the paths leads to an arbitrary file read on the host from the VM. The read operations are limited to files which are publicly readable or which are readable for UID 107 or GID 107. /proc/self/<> is not accessible.",
+  "title": "KubeVirt vulnerable to arbitrary file read on host",
+  "aliases": [
+    "GHSA-qv98-3369-g364",
+    "GMS-2022-4130"
+  ],
+  "severity": null,
+  "cvss_v3_score": null,
+  "cvss_v3_vector": null
+}
