@@ -20,10 +20,12 @@ def normalize_severity(severity: str):
     if not isinstance(severity, str):
         return "UNKNOWN"
     match severity.upper():
-        case "MEDIUM": return "MODERATE"
-        case "IMPORTANT": return "HIGH"
-        case other: return other
-
+        case "MEDIUM":
+            return "MODERATE"
+        case "IMPORTANT":
+            return "HIGH"
+        case other:
+            return other
 
 def create_link_by_id(id: str) -> str:
     if id.startswith("GHSA"):
@@ -84,8 +86,8 @@ class GithubAdvisoryConverter(AdvisoryConverter):
         return VulnerabilityModel(
             id=advisory["GhsaId"],
             description=advisory["Description"],
-            source=self.database_name(),
             title=advisory["Summary"],
+            source=self.database_name(),
             aliases=aliases,
             severity=normalize_severity(advisory.get("Severity")),
             cvss_v3_score=safe_str_to_float(advisory["CVSS"]["Score"]),
@@ -146,13 +148,13 @@ class OsvFormatBasedConverter(AdvisoryConverter, ABC):
         )
 
 
-class OsvLoader(OsvFormatBasedConverter):
+class OsvConverter(OsvFormatBasedConverter):
 
     def database_name(self) -> str:
         return "osv"
 
 
-class GoLoader(OsvFormatBasedConverter):
+class GoConverter(OsvFormatBasedConverter):
 
     def database_name(self) -> str:
         return "go"
@@ -179,8 +181,8 @@ converters = [
     GithubAdvisoryConverter(),
     GitlabAdvisoryConverter(),
     NvdConverter(),
-    OsvLoader(),
-    GoLoader(),
+    OsvConverter(),
+    GoConverter(),
     RedhatAdvisoryConverter()
 ]
 
@@ -193,4 +195,3 @@ def convert_vulnerabilities(databases_path: Path) -> tuple[str, Iterator[Vulnera
         progress_description = f"Converting {converter.database_name()}"
         for model in tqdm(converter.scan_database(databases_path), desc=progress_description):
             yield converter.database_name(), model
-
