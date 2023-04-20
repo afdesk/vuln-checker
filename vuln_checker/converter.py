@@ -25,7 +25,7 @@ def normalize_severity(severity: str):
         case other: return other
 
 
-class AdvisoryLoader(ABC):
+class AdvisoryConverter(ABC):
     @abstractmethod
     def database_name(self) -> str:
         raise NotImplementedError
@@ -35,19 +35,19 @@ class AdvisoryLoader(ABC):
         for p in database_path.rglob("*.json"):
             with open(p.absolute()) as f:
                 data = json.load(f)
-                yield self.to_unified_model(data)
+                yield self.convert(data)
 
     @abstractmethod
-    def to_unified_model(self, model: dict) -> VulnerabilityModel:
+    def convert(self, model: dict) -> VulnerabilityModel:
         raise NotImplementedError
 
 
-class GithubAdvisoryLoader(AdvisoryLoader):
+class GithubAdvisoryConverter(AdvisoryConverter):
 
     def database_name(self) -> str:
         return "ghsa"
 
-    def to_unified_model(self, model: dict) -> VulnerabilityModel:
+    def convert(self, model: dict) -> VulnerabilityModel:
         advisory = model["Advisory"]
         aliases = {identifier["Value"] for identifier in advisory["Identifiers"]
                    if identifier is not None}
@@ -63,12 +63,12 @@ class GithubAdvisoryLoader(AdvisoryLoader):
         )
 
 
-class GitlabAdvisoryLoader(AdvisoryLoader):
+class GitlabAdvisoryConverter(AdvisoryConverter):
 
     def database_name(self) -> str:
         return "glad"
 
-    def to_unified_model(self, model: dict) -> VulnerabilityModel:
+    def convert(self, model: dict) -> VulnerabilityModel:
         return VulnerabilityModel(
             model["identifier"],
             model["description"],
@@ -78,12 +78,12 @@ class GitlabAdvisoryLoader(AdvisoryLoader):
         )
 
 
-class NvdLoader(AdvisoryLoader):
+class NvdConverter(AdvisoryConverter):
 
     def database_name(self) -> str:
         return "nvd"
 
-    def to_unified_model(self, model: dict) -> VulnerabilityModel:
+    def convert(self, model: dict) -> VulnerabilityModel:
         description = [desc for desc in model["cve"]["description"]["description_data"] if desc["lang"] == "en"][0]
         cvss_v3_vector = None
         metric_v3 = model["impact"].get("baseMetricV3")
@@ -97,9 +97,9 @@ class NvdLoader(AdvisoryLoader):
         )
 
 
-class OsvFormatBasedLoader(AdvisoryLoader, ABC):
+class OsvFormatBasedConverter(AdvisoryConverter, ABC):
 
-    def to_unified_model(self, model: dict) -> VulnerabilityModel:
+    def convert(self, model: dict) -> VulnerabilityModel:
         return VulnerabilityModel(
             id=model["id"],
             aliases=set(model.get("aliases", [])),
@@ -107,23 +107,23 @@ class OsvFormatBasedLoader(AdvisoryLoader, ABC):
         )
 
 
-class OsvLoader(OsvFormatBasedLoader):
+class OsvLoader(OsvFormatBasedConverter):
 
     def database_name(self) -> str:
         return "osv"
 
 
-class GoLoader(OsvFormatBasedLoader):
+class GoLoader(OsvFormatBasedConverter):
 
     def database_name(self) -> str:
         return "go"
 
 
-class RedhatAdvisoryLoader(AdvisoryLoader):
+class RedhatAdvisoryConverter(AdvisoryConverter):
     def database_name(self) -> str:
         return "redhat"
 
-    def to_unified_model(self, model: dict) -> VulnerabilityModel:
+    def convert(self, model: dict) -> VulnerabilityModel:
         cvss3 = model.get("cvss3", {})
         return VulnerabilityModel(
             id=model["name"],
@@ -134,21 +134,21 @@ class RedhatAdvisoryLoader(AdvisoryLoader):
         )
 
 
-loaders = [
-    GithubAdvisoryLoader(),
-    GitlabAdvisoryLoader(),
-    NvdLoader(),
+converters = [
+    GithubAdvisoryConverter(),
+    GitlabAdvisoryConverter(),
+    NvdConverter(),
     OsvLoader(),
     GoLoader(),
-    RedhatAdvisoryLoader()
+    RedhatAdvisoryConverter()
 ]
 
 
-def load_vulnerabilities(databases_path: Path) -> tuple[str, Iterator[VulnerabilityModel]]:
-    supported_databases = [loader.database_name() for loader in loaders]
+def convert_vulnerabilities(databases_path: Path) -> tuple[str, Iterator[VulnerabilityModel]]:
+    supported_databases = [converter.database_name() for converter in converters]
     logging.info(f"Supported databases: {supported_databases}")
 
-    for loader in loaders:
-        progress_description = f"Scan {loader.database_name()}"
-        for model in tqdm(loader.scan_database(databases_path), desc=progress_description):
-            yield loader.database_name(), model
+    for converter in converters:
+        progress_description = f"Converting {converter.database_name()}"
+        for model in tqdm(converter.scan_database(databases_path), desc=progress_description):
+            yield converter.database_name(), model

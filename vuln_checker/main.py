@@ -13,7 +13,7 @@ import yaml
 from git import Repo, RemoteProgress
 from tqdm import tqdm
 
-from vuln_checker.load import load_vulnerabilities
+from vuln_checker.converter import convert_vulnerabilities
 
 DEFAULT_DATABASES_PATH = Path.cwd() / "vuln-list"
 VULNS_PATH = Path.cwd() / "vulnerabilities"
@@ -117,7 +117,7 @@ def key_by_priority(keys: Iterable[str], default) -> tuple[str, set[str]]:
 def create_map_of_vulnerabilities() -> VulnMap:
     vulns: VulnMap = {}
 
-    for database_name, model in load_vulnerabilities(DEFAULT_DATABASES_PATH):
+    for database_name, model in convert_vulnerabilities(DEFAULT_DATABASES_PATH):
         database_path = VULNS_PATH / database_name
         database_path.mkdir(exist_ok=True)
         vulnerability_file = database_path / (model.id + '.json')
