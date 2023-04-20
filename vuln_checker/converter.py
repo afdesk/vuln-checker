@@ -25,6 +25,32 @@ def normalize_severity(severity: str):
         case other: return other
 
 
+def create_link_by_id(id: str) -> str:
+    if id.startswith("GHSA"):
+        return f"https://github.com/advisories/{id}"
+    if id.startswith("GLSA"):
+        return f"https://security.gentoo.org/glsa/{id}"
+    if id.startswith("CVE"):
+        return f"https://cve.mitre.org/cgi-bin/cvename.cgi?name={id}"
+    if id.startswith("OSV"):
+        return f"https://osv.dev/vulnerability/{id}"
+    if id.startswith("GO"):
+        return f"https://golang.org/issue/{id}"
+    if id.startswith("RHSA"):
+        return f"https://access.redhat.com/errata/{id}"
+    if id.startswith("DSA"):
+        return f"https://security-tracker.debian.org/tracker/{id}"
+    if id.startswith("USN"):
+        return f"https://ubuntu.com/security/notices/{id}"
+    if id.startswith("ALAS"):
+        return f"https://alas.aws.amazon.com/{id}"
+    if id.startswith("MS"):
+        return f"https://portal.msrc.microsoft.com/en-US/security-guidance/advisory/{id}"
+    if id.startswith("RUSTSEC"):
+        return f"https://rustsec.org/advisories/{id}"
+    return ""
+
+
 class AdvisoryConverter(ABC):
     @abstractmethod
     def database_name(self) -> str:
@@ -33,7 +59,10 @@ class AdvisoryConverter(ABC):
     def scan_database(self, databases_path: Path) -> Iterator[VulnerabilityModel]:
         database_path = databases_path / self.database_name()
         for p in database_path.rglob("*.json"):
-            with open(p.absolute()) as f:
+            if p.is_dir():
+                continue
+
+            with p.open() as f:
                 data = json.load(f)
                 yield self.convert(data)
 
@@ -53,13 +82,15 @@ class GithubAdvisoryConverter(AdvisoryConverter):
                    if identifier is not None}
 
         return VulnerabilityModel(
-            advisory["GhsaId"],
-            advisory["Description"],
-            advisory["Summary"],
-            aliases,
-            normalize_severity(advisory.get("Severity")),
-            safe_str_to_float(advisory["CVSS"]["Score"]),
-            advisory["CVSS"]["VectorString"]
+            id=advisory["GhsaId"],
+            description=advisory["Description"],
+            source=self.database_name(),
+            title=advisory["Summary"],
+            aliases=aliases,
+            severity=normalize_severity(advisory.get("Severity")),
+            cvss_v3_score=safe_str_to_float(advisory["CVSS"]["Score"]),
+            cvss_v3_vector=advisory["CVSS"]["VectorString"],
+            primary_link=create_link_by_id(advisory["GhsaId"])
         )
 
 
@@ -70,11 +101,13 @@ class GitlabAdvisoryConverter(AdvisoryConverter):
 
     def convert(self, model: dict) -> VulnerabilityModel:
         return VulnerabilityModel(
-            model["identifier"],
-            model["description"],
-            model["title"],
+            id=model["identifier"],
+            description=model["description"],
+            title=model["title"],
+            source=self.database_name(),
             cvss_v3_vector=model.get("cvss_v3"),
-            aliases=set(model.get("identifiers", []))
+            aliases=set(model.get("identifiers", [])),
+            primary_link=create_link_by_id(model["identifier"])
         )
 
 
@@ -90,10 +123,14 @@ class NvdConverter(AdvisoryConverter):
         if metric_v3 is not None:
             cvss_v3_vector = metric_v3["cvssV3"]["vectorString"]
 
+        identifier = model["cve"]["CVE_data_meta"]["ID"]
+
         return VulnerabilityModel(
-            model["cve"]["CVE_data_meta"]["ID"],
-            description,
-            cvss_v3_vector=cvss_v3_vector
+            id=identifier,
+            description=description,
+            source=self.database_name(),
+            cvss_v3_vector=cvss_v3_vector,
+            primary_link=create_link_by_id(identifier)
         )
 
 
@@ -103,7 +140,9 @@ class OsvFormatBasedConverter(AdvisoryConverter, ABC):
         return VulnerabilityModel(
             id=model["id"],
             aliases=set(model.get("aliases", [])),
-            description=model["details"]
+            description=model["details"],
+            source=self.database_name(),
+            primary_link=create_link_by_id(model["id"])
         )
 
 
@@ -128,9 +167,11 @@ class RedhatAdvisoryConverter(AdvisoryConverter):
         return VulnerabilityModel(
             id=model["name"],
             description=",".join(model["details"]),
+            source=self.database_name(),
             severity=normalize_severity(model.get("threat_severity")),
             cvss_v3_score=safe_str_to_float(cvss3.get("cvss3_base_score")),
-            cvss_v3_vector=cvss3.get("cvss3_scoring_vector")
+            cvss_v3_vector=cvss3.get("cvss3_scoring_vector"),
+            primary_link=create_link_by_id(model["name"])
         )
 
 
@@ -152,3 +193,4 @@ def convert_vulnerabilities(databases_path: Path) -> tuple[str, Iterator[Vulnera
         progress_description = f"Converting {converter.database_name()}"
         for model in tqdm(converter.scan_database(databases_path), desc=progress_description):
             yield converter.database_name(), model
+

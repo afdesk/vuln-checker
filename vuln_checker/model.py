@@ -5,11 +5,13 @@ from dataclasses import dataclass, asdict, field
 class VulnerabilityModel:
     id: str
     description: str
+    source: str
     title: str | None = None
     aliases: set[str] = field(default_factory=set)
     severity: str | None = None
     cvss_v3_score: float | None = None
     cvss_v3_vector: str | None = None
+    primary_link: str | None = None
 
     def to_dict(self):
         return asdict(self)
