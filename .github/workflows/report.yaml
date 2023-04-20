@@ -1,0 +1,29 @@
+name: Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  build:
+        name: Build
+        uses: ./.github/workflows/build.yaml
+        secrets: inherit
+
+  report:
+    name: Deploy rpm/dep packages
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run vuln-checker
+        run: poetry run vuln-checker --export-type "table"
+
+      - name: Commit changes
+        run: |
+          git config user.name ${{ vars.USER_NAME || github.actor }}
+          git config user.email ${{ vars.USER_EMAIL || github.actor + '@users.noreply.github.com' }}
+          git add vulnerabilities/dump.csv -f
+          git commit -m "Dump reports"
+          git push
