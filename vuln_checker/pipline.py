@@ -1,6 +1,7 @@
 import itertools
 import json
 import logging
+from collections import OrderedDict
 from operator import itemgetter
 from pathlib import Path
 from typing import TypedDict, Iterable
@@ -20,7 +21,11 @@ def set_to_list(obj):
     raise TypeError
 
 
-priorities = frozenset(["CVE", "GHSA, GO"])
+priorities = OrderedDict([
+    (0, "CVE-"),
+    (1, "GHSA-"),
+    (2, "GO-"),
+])
 
 
 def key_by_priority(keys: Iterable[str], default) -> tuple[str, set[str]]:
@@ -36,24 +41,18 @@ def key_by_priority(keys: Iterable[str], default) -> tuple[str, set[str]]:
     ('CVE-2020-1234', {'CVE-2020-5678'})
     >>> key_by_priority(["CVE-2020-1234", "GHSA-1234"], "default")
     ('CVE-2020-1234', {'GHSA-1234'})
-    >>> key_by_priority(["GHSA-1234"], "default")
+    >>> key_by_priority(["GHSA-1234"], "GO-2022-0701")
     ('GHSA-1234', set())
-    >>> key_by_priority(["GO-2022-0706, GO-2022-0701"], "GO-2022-0701")
+    >>> key_by_priority(["GO-2022-0706", "GO-2022-0701"], "GO-2022-0701")
     ('GO-2022-0701', {'GO-2022-0706'})
 
     """
 
-    def find_identifier_by_prefix(k) -> str | None:
-        filtered = list(filter(lambda x: x.startswith(k), keys))
-        if len(filtered) > 0:
-            return filtered[0]
-        return None
-
-    key = list(map(find_identifier_by_prefix, priorities))[0]
-    if key is None:
-        key = default
-    aliases = set(keys) - {key}
-    return key, aliases
+    for p in priorities.values():
+        for k in sorted(keys):
+            if k.startswith(p):
+                return k, set(keys) - {k}
+    return default, set(keys) - {default}
 
 
 def create_map_of_vulnerabilities(databases_path: Path, vulnerabilities_path: Path) -> Vulnerabilities:
