@@ -102,7 +102,7 @@ def main():
         FileConfig.DEFAULT_DATABASES_PATH,
         FileConfig.VULNS_PATH,
         FileConfig.COMBINED_VULNS_PATH,
-        args.skip_dump
+        args.skip_convert
     )
 
     logging.info("Total count of different advisories: " + str(len(differences)))
