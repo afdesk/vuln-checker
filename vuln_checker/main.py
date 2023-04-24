@@ -138,15 +138,6 @@ def main():
         logging.info("Loading differences advisories from a file.")
         cached_reports = hashed_reports_persister.load()
 
-    import random
-    for _ in range(1):
-
-        random_hash = random.choice(list(cached_reports.keys()))
-        del cached_reports[random_hash]
-
-        random_hash = random.choice(list(reports.keys()))
-        del reports[random_hash]
-
     new_reports, resolved_reports, not_resolved_reports = get_reports(cached_reports, reports)
 
     count_of_new_differences = len(new_reports)
