@@ -27,6 +27,7 @@ def normalize_severity(severity: str):
         case other:
             return other
 
+
 def create_link_by_id(id: str) -> str:
     if id.startswith("GHSA"):
         return f"https://github.com/advisories/{id}"
@@ -66,7 +67,11 @@ class AdvisoryConverter(ABC):
 
             with p.open() as f:
                 data = json.load(f)
-                yield self.convert(data)
+                if not self.skip_advisory(data):
+                    yield self.convert(data)
+
+    def skip_advisory(self, model: dict) -> bool:
+        return False
 
     @abstractmethod
     def convert(self, model: dict) -> VulnerabilityModel:
@@ -94,6 +99,9 @@ class GithubAdvisoryConverter(AdvisoryConverter):
             cvss_v3_vector=advisory["CVSS"]["VectorString"],
             primary_link=create_link_by_id(advisory["GhsaId"])
         )
+
+    def skip_advisory(self, model: dict) -> bool:
+        return model["Advisory"].get("WithdrawnAt")
 
 
 class GitlabAdvisoryConverter(AdvisoryConverter):
