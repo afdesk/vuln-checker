@@ -28,32 +28,6 @@ def normalize_severity(severity: str):
             return other
 
 
-def create_link_by_id(id: str) -> str:
-    if id.startswith("GHSA"):
-        return f"https://github.com/advisories/{id}"
-    if id.startswith("GLSA"):
-        return f"https://security.gentoo.org/glsa/{id}"
-    if id.startswith("CVE"):
-        return f"https://cve.mitre.org/cgi-bin/cvename.cgi?name={id}"
-    if id.startswith("OSV"):
-        return f"https://osv.dev/vulnerability/{id}"
-    if id.startswith("GO"):
-        return f"https://golang.org/issue/{id}"
-    if id.startswith("RHSA"):
-        return f"https://access.redhat.com/errata/{id}"
-    if id.startswith("DSA"):
-        return f"https://security-tracker.debian.org/tracker/{id}"
-    if id.startswith("USN"):
-        return f"https://ubuntu.com/security/notices/{id}"
-    if id.startswith("ALAS"):
-        return f"https://alas.aws.amazon.com/{id}"
-    if id.startswith("MS"):
-        return f"https://portal.msrc.microsoft.com/en-US/security-guidance/advisory/{id}"
-    if id.startswith("RUSTSEC"):
-        return f"https://rustsec.org/advisories/{id}"
-    return ""
-
-
 class AdvisoryConverter(ABC):
     @abstractmethod
     def database_name(self) -> str:
@@ -88,8 +62,11 @@ class GithubAdvisoryConverter(AdvisoryConverter):
         aliases = {identifier["Value"] for identifier in advisory["Identifiers"]
                    if identifier is not None}
 
+        identifier = advisory["GhsaId"]
+        primary_link = f"https://github.com/advisories/{identifier}"
+
         return VulnerabilityModel(
-            id=advisory["GhsaId"],
+            id=identifier,
             description=advisory["Description"],
             title=advisory["Summary"],
             source=self.database_name(),
@@ -97,7 +74,7 @@ class GithubAdvisoryConverter(AdvisoryConverter):
             severity=normalize_severity(advisory.get("Severity")),
             cvss_v3_score=safe_str_to_float(advisory["CVSS"]["Score"]),
             cvss_v3_vector=advisory["CVSS"]["VectorString"],
-            primary_link=create_link_by_id(advisory["GhsaId"])
+            primary_link=primary_link
         )
 
     def skip_advisory(self, model: dict) -> bool:
@@ -110,6 +87,10 @@ class GitlabAdvisoryConverter(AdvisoryConverter):
         return "glad"
 
     def convert(self, model: dict) -> VulnerabilityModel:
+        identifier = model["identifier"]
+        package_slug = model["package_slug"]
+        primary_link = f"https://gitlab.com/gitlab-org/security-products/" \
+                       f"gemnasium-db/-/blob/master/{package_slug}/{identifier}.yml"
         return VulnerabilityModel(
             id=model["identifier"],
             description=model["description"],
@@ -117,7 +98,7 @@ class GitlabAdvisoryConverter(AdvisoryConverter):
             source=self.database_name(),
             cvss_v3_vector=model.get("cvss_v3"),
             aliases=set(model.get("identifiers", [])),
-            primary_link=create_link_by_id(model["identifier"])
+            primary_link=primary_link
         )
 
 
@@ -134,35 +115,46 @@ class NvdConverter(AdvisoryConverter):
             cvss_v3_vector = metric_v3["cvssV3"]["vectorString"]
 
         identifier = model["cve"]["CVE_data_meta"]["ID"]
-
+        primary_link = f"https://nvd.nist.gov/vuln/detail/{identifier}"
         return VulnerabilityModel(
             id=identifier,
             description=description,
             source=self.database_name(),
             cvss_v3_vector=cvss_v3_vector,
-            primary_link=create_link_by_id(identifier)
+            primary_link=primary_link
         )
 
 
 class OsvFormatBasedConverter(AdvisoryConverter, ABC):
 
+    @abstractmethod
+    def primary_link(self, identifier: str) -> str:
+        raise NotImplementedError
+
     def convert(self, model: dict) -> VulnerabilityModel:
+        identifier = model["id"]
         return VulnerabilityModel(
-            id=model["id"],
+            id=identifier,
             aliases=set(model.get("aliases", [])),
             description=model["details"],
             source=self.database_name(),
-            primary_link=create_link_by_id(model["id"])
+            primary_link=self.primary_link(identifier)
         )
 
 
 class OsvConverter(OsvFormatBasedConverter):
+
+    def primary_link(self, identifier: str) -> str:
+        return f"https://osv.dev/vulnerability/{identifier}"
 
     def database_name(self) -> str:
         return "osv"
 
 
 class GoConverter(OsvFormatBasedConverter):
+
+    def primary_link(self, identifier: str) -> str:
+        return f"https://pkg.go.dev/vuln/{identifier}"
 
     def database_name(self) -> str:
         return "go"
@@ -174,14 +166,15 @@ class RedhatAdvisoryConverter(AdvisoryConverter):
 
     def convert(self, model: dict) -> VulnerabilityModel:
         cvss3 = model.get("cvss3", {})
+        identifier = model["name"]
         return VulnerabilityModel(
-            id=model["name"],
+            id=identifier,
             description=",".join(model["details"]),
             source=self.database_name(),
             severity=normalize_severity(model.get("threat_severity")),
             cvss_v3_score=safe_str_to_float(cvss3.get("cvss3_base_score")),
             cvss_v3_vector=cvss3.get("cvss3_scoring_vector"),
-            primary_link=create_link_by_id(model["name"])
+            primary_link=f"https://access.redhat.com/security/cve/{identifier}"
         )
 
 
