@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    name: Unit test
+    name: Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -19,6 +19,10 @@ jobs:
       - name: Install Python and Poetry
         uses: ./.github/actions/poetry
 
-      - name: Run tests
+      - name: Run unit tests
         run: |
-          pytest tests/
+          pytest tests/unit
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration
