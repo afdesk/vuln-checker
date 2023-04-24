@@ -62,19 +62,6 @@ def create_map_of_vulnerabilities(databases_path: Path, vulnerabilities_path: Pa
     :param vulnerabilities_path: path to the vulnerabilities' folder
     :return: map of vulnerabilities
 
-    Example:
-
-    >>> create_map_of_vulnerabilities(Path("vuln-list"), Path("vulnerabilities")
-    {
-        "CVE-2020-1234": {
-            "aliases": {"CVE-2020-5678"},
-            'files': {"/vulnerabilities/go/1234.json"},
-        },
-        "CVE-2020-5678": {
-            "aliases": {"CVE-2020-1234"},
-            'files': {"/vulnerabilities/go/5678.json"},
-        },
-    }
     """
 
     vulns: Vulnerabilities = {}
@@ -122,7 +109,7 @@ def init_graph_of_vulnerabilities(vulnerabilities: Vulnerabilities):
     >>> list(g.nodes(data=True))
     [('CVE-2020-1234', {'files': {'/vulnerabilities/go/1234.json'}}), ('CVE-2020-5678', {'files': {'/vulnerabilities/go/5678.json'}})]
     >>> list(g.edges)
-    [('CVE-2020-1234', 'CVE-2020-5678'), ('CVE-2020-5678', 'CVE-2020-1234')]
+    [('CVE-2020-1234', 'CVE-2020-5678')]
 
     """
     graph = nx.Graph()
@@ -156,16 +143,7 @@ def traverse_graph_and_combine_vulnerabilities(graph: nx.Graph) -> Vulnerabiliti
     ... })
 
     >>> traverse_graph_and_combine_vulnerabilities(g)
-    {
-        'CVE-2020-1234': {
-            'aliases': {'CVE-2020-5678'},
-            "filepath": {'/vulnerabilities/go/1234.json', '/vulnerabilities/go/5678.json'}
-        },
-        'CVE-2020-5678': {
-            'aliases': {'CVE-2020-1234'},
-            'files': {'/vulnerabilities/go/1234.json', '/vulnerabilities/go/5678.json'}
-        }
-    }
+    {'CVE-2020-1234': {'aliases': {'CVE-2020-5678'}, 'files': {'/vulnerabilities/go/5678.json', '/vulnerabilities/go/1234.json'}}}
 
     """
     combined_vulnerabilities: Vulnerabilities = {}
