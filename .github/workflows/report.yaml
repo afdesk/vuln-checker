@@ -1,0 +1,28 @@
+name: Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  report:
+    name: Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Python and Poetry
+        uses: ./.github/actions/poetry
+
+      - name: Run vuln-checker
+        run: poetry run vuln-checker --export-type "table,github"
+
+      - name: Commit changes
+        run: |
+          git config user.name ${{ github.actor }}
+          git config user.email ${{ github.actor + '@users.noreply.github.com' }}
+          git add vulnerabilities/dump.csv -f
+          git commit -m "Dump reports"
+          git push
