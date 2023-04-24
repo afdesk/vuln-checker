@@ -1,0 +1,24 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_requests:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Unit test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Python and Poetry
+        uses: ./.github/actions/poetry
+
+      - name: Run tests
+        run: |
+          pytest tests/
